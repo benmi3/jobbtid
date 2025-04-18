@@ -1,6 +1,5 @@
 /*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-
+Copyright © 2025 Benjamin Jørgensen <me@benmi.me>
 */
 package main
 
