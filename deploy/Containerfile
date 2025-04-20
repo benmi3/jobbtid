@@ -1,0 +1,43 @@
+# Stage 1: Build Stage
+# Use an official Go image as the build environment.
+# Specify the Go version you are using (e.g., 1.24)
+FROM golang:1.24-alpine AS builder
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy go.mod and go.sum first to leverage Docker cache
+COPY go.mod go.sum ./
+# Download dependencies
+RUN go mod download
+
+# Copy the rest of the application source code
+COPY . .
+
+# Build the Go application
+# -o /app/jobbtid: Specifies the output binary name and location
+# -ldflags="-w -s": Reduces the binary size by removing debug information
+# CGO_ENABLED=0: Builds a statically linked binary (important for minimal base images like alpine/scratch)
+RUN CGO_ENABLED=0 go build -ldflags="-w -s" -o /app/jobbtid .
+
+# Stage 2: Runtime Stage
+# Use a minimal base image for the final container
+FROM alpine:latest
+
+# Set the working directory
+WORKDIR /app
+
+# Define default environment variables for port.
+# These can be overridden when running the container (e.g., using `docker run -e ...`)
+ENV APP_PORT="8080"
+
+# Copy the built binary from the builder stage
+COPY --from=builder /app/jobbtid /app/jobbtid
+
+# Expose the port the application will listen on.
+# This informs Docker that the container listens on this network port.
+EXPOSE $APP_PORT
+
+# Command to run the application when the container starts
+# Executes the binary located at /app/jobbtid
+CMD ["/app/jobbtid"]

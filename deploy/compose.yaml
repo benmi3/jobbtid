@@ -1,0 +1,34 @@
+services:
+  jobbtid:
+    #image: tbd/jobbtid
+    build:
+      context: .
+      dockerfile: Containerfile
+    container_name: jobbtid
+    restart: always
+    ports:
+     - ${APP_HTTP_PORT}:8080
+
+  couchdb:
+    image: couchdb:${DB_VERSION}
+    container_name: couchdb
+    restart: always
+    ports:
+     - ${DB_HTTP_PORT}:5984
+    volumes:
+     - couchdb_data:/opt/couchdb/data
+     - couchdb_config:/opt/couchdb/etc/local.d
+     - couchdb_log:/opt/couchdb/var/log
+    environment:
+      COUCHDB_USER: ${DB_USER}
+      COUCHDB_PASSWORD: ${DB_PASSWORD}
+
+networks:
+  default:
+    name: ${APP_NETWORK}
+    external: true
+
+volumes:
+  couchdb_data:
+  couchdb_config:
+  couchdb_log:
