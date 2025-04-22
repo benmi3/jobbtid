@@ -22,5 +22,8 @@ func Serve(cfg *config.Config) {
 	}
 	// Server start
 	http.HandleFunc("/", greet)
+	http.Handle("/start", authMiddleware(http.HandlerFunc(start)))
+	http.Handle("/stop", authMiddleware(http.HandlerFunc(stop)))
+	http.Handle("/check", authMiddleware(http.HandlerFunc(check)))
 	http.ListenAndServe(host, nil)
 }
