@@ -6,12 +6,6 @@ import (
 	"net/http"
 )
 
-type UserRequest struct {
-	Username string `json:"username" `
-	Date     string `json:"date" `
-	Time     string `json:"time" `
-}
-
 type HttpResponse struct {
 	StatusCode int    `json:"statusCode"`
 	Message    string `json:"message"`
