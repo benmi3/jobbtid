@@ -10,10 +10,18 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cfgFilePath string
+var (
+	cfgFilePath string
+	MainConfig  Config
+)
 
 type Config struct {
-	ServerConf serverConfig
+	ServerConf    serverConfig
+	EideticConfig eideticConfig
+}
+
+type eideticConfig struct {
+	Host string
 }
 
 type serverConfig struct {
@@ -22,7 +30,7 @@ type serverConfig struct {
 	Port    uint
 }
 
-func (conf serverConfig) host() string {
+func (conf *serverConfig) getHost() string {
 	return fmt.Sprintf("%s:%d", conf.Host, conf.Port)
 }
 
@@ -33,16 +41,18 @@ func createDefaultConfig() Config {
 		Host:    "",
 		Port:    8080,
 	}
+	var myEideticConfig eideticConfig
 	// Main Config
 	mainConfig := Config{
-		ServerConf: myServerConfig,
+		ServerConf:    myServerConfig,
+		EideticConfig: myEideticConfig,
 	}
 	return mainConfig
 }
 
-func (conf Config) Host(configName string) (string, error) {
+func (conf *Config) Host(configName string) (string, error) {
 	if configName == "server" {
-		return conf.ServerConf.host(), nil
+		return conf.ServerConf.getHost(), nil
 	}
 	return "", errors.New("unsupported config")
 }
@@ -60,20 +70,20 @@ func (conf Config) updateServerConf() error {
 }
 
 func ReadConfigFile(cfgFilePath string) (Config, error) {
-	mainConfig := createDefaultConfig()
+	MainConfig = createDefaultConfig()
 	viper.AddConfigPath(cfgFilePath)
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
 			// Config file not found; ignore error if desired
 			fmt.Println("Using default!")
-			return mainConfig, nil
+			return MainConfig, nil
 		} else {
 			// Config file was found but another error was produced
 		}
 	} else {
-		mainConfig.updateServerConf()
+		MainConfig.updateServerConf()
 	}
 
-	return mainConfig, err
+	return MainConfig, err
 }
