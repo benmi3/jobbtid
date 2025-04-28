@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"jobbtid/pkg/config"
+	"jobbtid/pkg/db"
 	"net/http"
 	"time"
 )
@@ -26,6 +27,7 @@ func start(w http.ResponseWriter, r *http.Request) {
 		//  hehe
 		RespondWithCodeMessage(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
 	}
+	db.Create(userReq.Username, userReq.Date, userReq.Time, "")
 	// Temp just to satisfy lsp
 	fmt.Fprint(w, body)
 }
