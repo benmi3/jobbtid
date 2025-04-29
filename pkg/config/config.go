@@ -16,12 +16,7 @@ var (
 )
 
 type Config struct {
-	ServerConf    serverConfig
-	EideticConfig eideticConfig
-}
-
-type eideticConfig struct {
-	Host string
+	ServerConf serverConfig
 }
 
 type serverConfig struct {
@@ -41,11 +36,9 @@ func createDefaultConfig() Config {
 		Host:    "",
 		Port:    8080,
 	}
-	var myEideticConfig eideticConfig
 	// Main Config
 	mainConfig := Config{
-		ServerConf:    myServerConfig,
-		EideticConfig: myEideticConfig,
+		ServerConf: myServerConfig,
 	}
 	return mainConfig
 }

@@ -10,91 +10,53 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	_ "github.com/marcboeker/go-duckdb"
 )
 
-var (
-	db             *sql.DB
-	table_creation = `
--- Create the user_sessions table if it doesn't exist (DuckDB & PostgreSQL compatible)
-CREATE TABLE IF NOT EXISTS jobbtid (
-    -- Primary Key
-    id BIGSERIAL PRIMARY KEY,
-
-    -- User Information
-    username VARCHAR(255) NOT NULL,
-
-		-- Work Time
-    jobbdag TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    starttime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    stoptime TIMESTAMP NULL,
-
-    -- Record creation/update Timestamps
-    create_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    update_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    -- Audit User IDs
-    create_uid VARCHAR(255) NULL,
-    update_uid VARCHAR(255) NULL
-
-		-- Delete state
-		delete_flag TIMESTAMP NULL
-);
-
--- Optional: Add indexes
-CREATE INDEX IF NOT EXISTS idx_user_sessions_username ON user_sessions(username);
-CREATE INDEX IF NOT EXISTS idx_user_sessions_starttime ON user_sessions(starttime);
-CREATE INDEX IF NOT EXISTS idx_user_sessions_stoptime ON user_sessions(stoptime);
-`
-)
+var db *sql.DB
 
 type Jobbtid struct {
-	Id int
+	Id int `json:"id"`
 
-	Uid string
+	Uid string `json:"userId"`
 
-	JobbDag time.Time
+	JobbDag time.Time `json:"jobbDag"`
 
-	Starttime time.Time
-	Stoptime  time.Time
+	Starttime time.Time `json:"startTime"`
+	Stoptime  time.Time `json:"stopTime"`
 
-	Create_dt time.Time
-	Update_dt time.Time
+	Create_dt time.Time `json:"createDt"`
+	Update_dt time.Time `json:"updateDt"`
 
-	Create_uid string
-	Update_uid string
+	Create_uid string `json:"createUserId"`
+	Update_uid string `json:"updateUserId"`
 }
 
 func init() {
-	db, err := sql.Open("duckdb", "?access_mode=READ_WRITE")
+	db, err := setupDbCon()
 	if err != nil {
 		// DB is essential
 		// panic and tell the user why
 		panic(err)
 	}
-	err = db.Ping()
-	if err != nil {
-		// Pingcheck
-		// panic and tell the user why
-		panic(err)
-	}
-	setupTables()
 	defer db.Close()
-}
-
-func setupTables() {
 	setting := db.QueryRowContext(context.Background(), "SELECT current_setting('access_mode')")
 	var accessMode string
-	err := setting.Scan(&accessMode)
+	err = setting.Scan(&accessMode)
 	if err != nil {
 		log.Println("Could not get accessmode")
 	} else {
 		log.Printf("DB opened with access mode %s", accessMode)
 	}
 
-	_, err = db.ExecContext(context.Background(), table_creation)
+	initfile, err := os.ReadFile("db/init.sql")
+	if err != nil {
+		panic(err)
+	}
+	_, err = db.ExecContext(context.Background(), string(initfile))
 	if err != nil {
 		panic(err)
 	}
@@ -142,6 +104,7 @@ func Update(
 	if err != nil {
 		return -1, err
 	}
+	defer db.Close()
 
 	query := `
         UPDATE jobbtid
@@ -151,7 +114,7 @@ func Update(
             update_dt = CURRENT_TIMESTAMP,
             update_uid = ?
         WHERE
-            id = ? AND jobbtid = ?`
+            id = ? AND jobbdag = ?`
 
 	res, err := db.ExecContext(context.Background(), query, starttime, stoptime, uid, jobbtid)
 	if err != nil {
@@ -160,48 +123,68 @@ func Update(
 	return res.LastInsertId()
 }
 
-func Get(
+func GetById(
 	uid string,
-) (*bytes.Buffer, error) {
-	db, err := sql.Open("duckdb", "?access_mode=READ_WRITE")
+) ([]byte, error) {
+	db, err := setupDbCon()
 	if err != nil {
 		return nil, err
 	}
-	err = db.Ping()
-	if err != nil {
-		return nil, err
-	}
+	defer db.Close()
 
-	rows, err := db.QueryContext(
+	row := db.QueryRowContext(
 		context.Background(), `
 		SELECT (*)
 		FROM jobbtid
-		WHERE (uid = ? )`,
+		WHERE 
+			uid = ?`,
 		uid,
 	)
+
+	j := new(Jobbtid)
+	err = row.Scan(&j.Id, &j.Uid, &j.JobbDag, &j.Starttime, &j.Stoptime, &j.Create_dt, &j.Update_dt, &j.Create_uid, &j.Update_uid)
+	if err != nil {
+		log.Fatal(err)
+	}
+	jsonData, err := json.Marshal(j)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling jobbtid due to %s¥n", err)
+	}
+
+	return jsonData, nil
+}
+
+func GetByDate(
+	userid string,
+	jobbdag string,
+) ([]byte, error) {
+	db, err := setupDbCon()
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer db.Close()
 
-	var buff bytes.Buffer
+	row := db.QueryRowContext(
+		context.Background(), `
+		SELECT (*)
+		FROM jobbtid
+		WHERE 
+			jobbdag = ? 
+			AND uid = ?`,
+		jobbdag, userid,
+	)
 
-	for rows.Next() {
-		j := new(Jobbtid)
-		err := rows.Scan(j.Id, j.Uid, j.JobbDag, j.Starttime, j.Stoptime, j.Create_dt, j.Update_dt, j.Create_uid, j.Update_uid)
-		if err != nil {
-			log.Fatal(err)
-		}
-		jsonData, err := json.Marshal(j)
-		if err != nil {
-			return nil, fmt.Errorf("error marshaling jobbtid due to %s¥n", err)
-		}
-		err = appendJson(jsonData, &buff)
-		if err != nil {
-			return nil, fmt.Errorf("error appending %s", err)
-		}
+	j := new(Jobbtid)
+	err = row.Scan(&j.Id, &j.Uid, &j.JobbDag, &j.Starttime, &j.Stoptime, &j.Create_dt, &j.Update_dt, &j.Create_uid, &j.Update_uid)
+	if err != nil {
+		log.Fatal(err)
 	}
-	return &buff, nil
+	jsonData, err := json.Marshal(j)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling jobbtid due to %s¥n", err)
+	}
+
+	return jsonData, nil
 }
 
 func List() (*bytes.Buffer, error) {
@@ -209,6 +192,7 @@ func List() (*bytes.Buffer, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer db.Close()
 
 	rows, err := db.QueryContext(
 		context.Background(), `
@@ -224,7 +208,7 @@ func List() (*bytes.Buffer, error) {
 
 	for rows.Next() {
 		j := new(Jobbtid)
-		err := rows.Scan(j.Id, j.Uid, j.JobbDag, j.Starttime, j.Stoptime, j.Create_dt, j.Update_dt, j.Create_uid, j.Update_uid)
+		err := rows.Scan(&j.Id, &j.Uid, &j.JobbDag, &j.Starttime, &j.Stoptime, &j.Create_dt, &j.Update_dt, &j.Create_uid, &j.Update_uid)
 		if err != nil {
 			log.Fatal(err)
 		}

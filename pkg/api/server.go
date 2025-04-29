@@ -11,7 +11,7 @@ import (
 )
 
 func greet(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello World! %s", time.Now())
+	fmt.Fprintf(w, "The current time is %s", time.Now())
 }
 
 func Serve(cfg *config.Config) {

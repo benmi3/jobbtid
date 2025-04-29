@@ -11,6 +11,10 @@ type HttpResponse struct {
 	Message    string `json:"message"`
 }
 
+type CreatedId struct {
+	ItemId int64 `json:"id"`
+}
+
 func RespondWithCodeMessage(w http.ResponseWriter, code int, message string) {
 	errResp := HttpResponse{
 		StatusCode: code,
@@ -24,11 +28,15 @@ func RespondWithCodeMessage(w http.ResponseWriter, code int, message string) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
+	RespondWithCodeBody(w, code, jsonData)
+}
 
-	_, err = w.Write(jsonData)
+func RespondWithCodeBody(w http.ResponseWriter, code int, body []byte) {
+	w.Header().Set("Content-Type", "application/json")
+	// w.WriteHeader(code)
+
+	_, err := w.Write(body)
 	if err != nil {
-		log.Printf("Error writing error response: %v", err)
+		log.Printf("Error writing response: %v", err)
 	}
 }

@@ -4,11 +4,22 @@ Copyright © 2025 Benjamin Jørgensen <me@benmi.me>
 package api
 
 import (
-	"fmt"
+	"jobbtid/pkg/db"
 	"net/http"
-	"time"
 )
 
 func check(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello World! %s", time.Now())
+	var userReq UserRequest
+	resCode := userReq.handleRequest(r)
+	if resCode > http.StatusIMUsed {
+		RespondWithCodeMessage(w, resCode, http.StatusText(resCode))
+		return
+	}
+	resBody, err := db.GetByDate(userReq.Username, userReq.Date)
+	if err != nil || resBody == nil {
+		// recId is an auto increment BIGING, so if its 0 or less, something is wrong
+		RespondWithCodeMessage(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+	RespondWithCodeBody(w, http.StatusOK, resBody)
 }
