@@ -47,6 +47,10 @@ func (ur *UserRequest) checkDateTime() {
 	ur.checkTime()
 }
 
+func (ur *UserRequest) okUsername() bool {
+	return ur.Username != ""
+}
+
 func (ur *UserRequest) handleRequest(r *http.Request) int {
 	switch r.Method {
 	case "GET":
@@ -66,6 +70,9 @@ func (ur *UserRequest) handleRequest(r *http.Request) int {
 
 	default:
 		return http.StatusMethodNotAllowed
+	}
+	if !ur.okUsername() {
+		return http.StatusBadRequest
 	}
 	return http.StatusOK
 }
