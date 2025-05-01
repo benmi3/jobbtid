@@ -62,6 +62,9 @@ func (ur *UserRequest) handleRequest(r *http.Request) int {
 		ur.setDate(date)
 		ur.setTime(time)
 	case "POST":
+		if r.Body == nil {
+			return http.StatusBadRequest
+		}
 		err := json.NewDecoder(r.Body).Decode(&ur)
 		if err != nil {
 			return http.StatusBadRequest

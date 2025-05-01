@@ -10,13 +10,45 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	_ "github.com/marcboeker/go-duckdb"
 )
 
-var db *sql.DB
+var (
+	db      *sql.DB
+	initSql = `
+-- Create the user_sessions table if it doesn't exist (DuckDB & PostgreSQL compatible)
+CREATE TABLE IF NOT EXISTS jobbtid (
+    -- Primary Key
+    id BIGINT PRIMARY KEY,
+
+    -- User Information
+    uid VARCHAR(255) NOT NULL,
+
+		-- Work Time
+    jobbdag TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    starttime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    stoptime TIMESTAMP NULL,
+
+    -- Record creation/update Timestamps
+    create_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_dt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    -- Audit User IDs
+    create_uid VARCHAR(255) NULL,
+    update_uid VARCHAR(255) NULL,
+
+		-- Delete state
+		delete_flag TIMESTAMP NULL
+);
+
+-- Optional: Add indexes
+CREATE INDEX IF NOT EXISTS idx_jobbtid_uid ON jobbtid(uid);
+CREATE INDEX IF NOT EXISTS idx_jobbtid_starttime ON jobbtid(starttime);
+CREATE INDEX IF NOT EXISTS idx_jobbtid_stoptime ON jobbtid(stoptime);
+	`
+)
 
 type Jobbtid struct {
 	Id int `json:"id"`
@@ -52,11 +84,11 @@ func init() {
 		log.Printf("DB opened with access mode %s", accessMode)
 	}
 
-	initfile, err := os.ReadFile("db/init.sql")
+	// initfile, err := os.ReadFile("db/init.sql")
 	if err != nil {
 		panic(err)
 	}
-	_, err = db.ExecContext(context.Background(), string(initfile))
+	_, err = db.ExecContext(context.Background(), string(initSql))
 	if err != nil {
 		panic(err)
 	}

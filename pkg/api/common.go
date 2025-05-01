@@ -33,7 +33,7 @@ func RespondWithCodeMessage(w http.ResponseWriter, code int, message string) {
 
 func RespondWithCodeBody(w http.ResponseWriter, code int, body []byte) {
 	w.Header().Set("Content-Type", "application/json")
-	// w.WriteHeader(code)
+	w.WriteHeader(code)
 
 	_, err := w.Write(body)
 	if err != nil {

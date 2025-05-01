@@ -24,7 +24,7 @@ func TestGETCheck(t *testing.T) {
 		}
 
 		if response.Code != http.StatusBadRequest {
-			t.Errorf("got %q, want %q", response.Code, http.StatusBadRequest)
+			t.Errorf("got %d, want %d", response.Code, http.StatusBadRequest)
 		}
 	})
 }
@@ -43,7 +43,7 @@ func TestPOSTCheck(t *testing.T) {
 			t.Errorf("got %q, want %q", got, want)
 		}
 		if response.Code != http.StatusBadRequest {
-			t.Errorf("got %q, want %q", response.Code, http.StatusBadRequest)
+			t.Errorf("got %d, want %d", response.Code, http.StatusBadRequest)
 		}
 	})
 }
