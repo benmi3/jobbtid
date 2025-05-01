@@ -11,8 +11,16 @@ stages:
   - codescan-2
 test:
   stage: test
+  image: golang:latest
   script:
     - go test ./... -coverprofile=coverage.out
+  artifacts:
+    # Save the coverage report file as an artifact
+    paths:
+      - coverage.out
+    expire_in: 1 week
+    when: always
+
 sast:
   stage: codescan-1
 include:
