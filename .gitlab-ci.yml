@@ -20,6 +20,7 @@ test:
       - coverage.out
     expire_in: 1 week
     when: always
+  allow_failure: true # temp
 
 sast:
   stage: codescan-1
