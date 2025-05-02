@@ -13,7 +13,7 @@ test:
   stage: test
   image: golang:latest
   script:
-    - go test ./... -coverprofile=coverage.out
+    - go test -race -covermode=atomic -coverprofile=coverage.out ./...
   artifacts:
     # Save the coverage report file as an artifact
     paths:
