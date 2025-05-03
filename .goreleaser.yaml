@@ -104,7 +104,7 @@ dockers:
       - "{{ .Env.CI_REGISTRY_IMAGE }}:{{ .Major }}"       # Optional: Push v1, v2 etc. tags
       - "{{ .Env.CI_REGISTRY_IMAGE }}:{{ .Major }}.{{ .Minor }}" # Optional: Push v1.2, v1.3 etc. tags
     # Path to the Dockerfile
-    dockerfile: deploy/Containerfile
+    dockerfile: "deploy/Containerfile"
     # Only build/push for linux/amd64 platform for this image
     goos: linux
     goarch: amd64
