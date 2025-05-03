@@ -1,0 +1,127 @@
+# .goreleaser.yaml
+# Visit https://goreleaser.com/customization/
+project_name: jobbtid
+
+# Environment variables used by GoReleaser, often populated by the CI system
+# These are automatically picked up if set in the environment.
+# Example: GITLAB_TOKEN (needed for GitLab releases)
+# Example: CI_PROJECT_NAMESPACE, CI_PROJECT_NAME (used in gitlab release config)
+# Example: CI_REGISTRY_IMAGE (used in dockers config)
+
+before:
+  hooks:
+    # You could run go mod tidy, generate code, etc. before building
+    # - go mod tidy
+    # - go generate ./...
+
+builds:
+  - # Your main application build configuration
+    id: "jobbtid"
+    # Path to main package
+    main: .
+    # Binary name (defaults to project_name)
+    binary: jobbtid
+    # Target platforms
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    # Optional: Environment variables for the build
+    # env:
+    #   - CGO_ENABLED=0
+    # Optional: Build flags, like injecting version info
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+      - -X main.builtBy=goreleaser
+
+archives:
+  - # Creates compressed archives of your binaries
+    id: "default"
+    # Link builds to this archive definition
+    builds:
+      - "jobbtid"
+    # Archive name format
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    # Archive format based on OS
+    format_overrides:
+      - goos: windows
+        format: zip
+    # Files to include besides the binary
+    files:
+      - README.md
+      - LICENSE
+
+checksum:
+  # Generates a checksum file for the archives
+  name_template: "checksums.txt"
+
+snapshot:
+  # Configuration for snapshot releases (e.g., builds from main branch)
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  # Generates a changelog based on Git commit history
+  sort: asc
+  filters:
+    # Exclude certain commit types from the changelog
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge branch"
+      - "Merge pull request"
+
+# Configures releasing to GitLab
+release:
+  # Use GitLab Releases
+  gitlab:
+    # Reads owner/repo name from CI environment variables provided by GitLab CI
+    # Assumes your GitLab project URL is like: gitlab.com/your-group/your-project
+    owner: $CI_PROJECT_NAMESPACE # Automatically populated by GitLab CI
+    name: $CI_PROJECT_NAME     # Automatically populated by GitLab CI
+  # Optional: Draft releases (set to true to manually publish later)
+  # draft: true
+  # Optional: Pre-releases
+  # prerelease: auto # Detects based on version string (e.g., v1.0.0-rc1)
+
+# Configures Docker image building and pushing
+dockers:
+  - # Define the Docker image build
+    # Link to the build configuration for the binary to include
+    builds:
+      - "jobbtid"
+    # Docker image name templates. Pushes 'latest' and tagged version to GitLab Registry.
+    # $CI_REGISTRY_IMAGE is automatically populated by GitLab CI (e.g., registry.gitlab.com/your-group/your-project)
+    image_templates:
+      - "{{ .Env.CI_REGISTRY_IMAGE }}:latest"
+      - "{{ .Env.CI_REGISTRY_IMAGE }}:{{ .Tag }}"
+      - "{{ .Env.CI_REGISTRY_IMAGE }}:{{ .Major }}"       # Optional: Push v1, v2 etc. tags
+      - "{{ .Env.CI_REGISTRY_IMAGE }}:{{ .Major }}.{{ .Minor }}" # Optional: Push v1.2, v1.3 etc. tags
+    # Path to the Dockerfile
+    dockerfile: deploy/Containerfile
+    # Only build/push for linux/amd64 platform for this image
+    goos: linux
+    goarch: amd64
+    # Build arguments passed to Docker
+    build_flag_templates:
+      - "--pull" # Always attempt to pull newer base images
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.title={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Version}}"
+      # Add any other ARG defined in your Dockerfile
+      # - "--build-arg=MY_ARG={{.Version}}"
+    # skip_push: auto # 'auto' pushes only on Git tags, false pushes always, true never pushes. Default is 'auto'.
+    # Optional: Specify registry and credentials if not using GitLab's auto-login (usually not needed with GitLab CI)
+    # use: docker # can be docker or buildx
+
+# signs:
+#   - # Optional: Sign artifacts using cosign/gpg
+#     cmd: cosign
+#     # ... cosign configuration ...

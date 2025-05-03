@@ -40,4 +40,4 @@ EXPOSE $APP_PORT
 
 # Command to run the application when the container starts
 # Executes the binary located at /app/jobbtid
-CMD ["/app/jobbtid"]
+CMD ["./app/jobbtid"]
