@@ -9,6 +9,7 @@ stages:
   - test
   - codescan-1
   - codescan-2
+  - release 
 test:
   stage: test
   image: golang:latest
