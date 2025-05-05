@@ -12,7 +12,7 @@ builds:
 
 dockers:
   - image_templates: ["registry.gitlab.com/benmi/jobbtid:{{ .Version }}"]
-    dockerfile: Dockerfile
+    dockerfile: deploy/Containerfile
     build_flag_templates:
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
