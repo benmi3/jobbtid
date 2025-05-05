@@ -49,54 +49,32 @@ sonarcloud-check:
     - main
     - dev
 
-
-# Define variables used in the pipeline
-variables:
-  # Use Docker-in-Docker (DinD) service (requires runner with privileged mode)
-  DOCKER_HOST: tcp://docker:2375
-  # Disable Docker TLS verification for DinD
-  DOCKER_TLS_CERTDIR: ""
-  # Define the GoReleaser image to use
-  GORELEASER_IMAGE: goreleaser/goreleaser:latest # Use a specific version tag in production
-
-# Template for GoReleaser job
-#.goreleaser_job_template: &goreleaser_job
-release_tagged:
+release:
   stage: release
-  image: $GORELEASER_IMAGE
-  # Use Docker-in-Docker service to build Docker images
+  image: docker:stable
   services:
-    - name: docker:dind # Docker-in-Docker
-      alias: docker
-  # Runs before the main script
-  #before_script:
-    # Login to GitLab Container Registry using predefined CI variables
-    # $CI_REGISTRY_USER, $CI_REGISTRY_PASSWORD, $CI_REGISTRY are provided by GitLab
-  #  - echo "Logging into GitLab Container Registry..."
-  #  - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
-  script:
-    # Login to GitLab Container Registry using predefined CI variables
-    # $CI_REGISTRY_USER, $CI_REGISTRY_PASSWORD, $CI_REGISTRY are provided by GitLab
-    - echo "Logging into GitLab Container Registry..."
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
-    # Run GoReleaser.
-    # --rm-dist automatically cleans the dist/ folder before building.
-    # $GITLAB_TOKEN is read automatically by GoReleaser from the environment.
-    - echo "Running GoReleaser..."
-    - goreleaser release --rm-dist
+    - docker:dind
+
   artifacts:
-    # Optional: Keep build artifacts (binaries, archives, checksums) from the dist/ directory
     paths:
       - dist/
     expire_in: 1 week # Optional: How long to keep artifacts
+
   rules:
-    # Run ONLY when a Git tag is pushed (e.g., v1.0.0, v1.1.0-rc1)
     - if: $CI_COMMIT_TAG
 
-# # Job to run GoReleaser when a Git tag is pushed
-# release_tagged:
-#   <<: *goreleaser_job # Inherit from the template
-#   # Rules determine when the job runs
-#   rules:
-#  #   # Run ONLY when a Git tag is pushed (e.g., v1.0.0, v1.1.0-rc1)
-#     - if: $CI_COMMIT_TAG
+  variables:
+    DOCKER_REGISTRY: $CI_REGISTRY
+    DOCKER_USERNAME: $CI_REGISTRY_USER
+    DOCKER_PASSWORD: $CI_REGISTRY_PASSWORD
+    GIT_DEPTH: 0
+
+  script: |
+    docker run --rm --privileged \
+      -v $PWD:/go/src/gitlab.com/benmi/jobbtid \
+      -w /go/src/gitlab.com/benmi/jobbtid \
+      -v /var/run/docker.sock:/var/run/docker.sock \
+      -e DOCKER_USERNAME -e DOCKER_PASSWORD -e DOCKER_REGISTRY  \
+      -e GITLAB_TOKEN \
+      goreleaser/goreleaser release --clean
+
