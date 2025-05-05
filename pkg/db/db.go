@@ -12,7 +12,8 @@ import (
 	"log"
 	"time"
 
-	_ "github.com/marcboeker/go-duckdb"
+	//_ "github.com/marcboeker/go-duckdb"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var (
@@ -75,19 +76,19 @@ func init() {
 		panic(err)
 	}
 	defer db.Close()
-	setting := db.QueryRowContext(context.Background(), "SELECT current_setting('access_mode')")
-	var accessMode string
-	err = setting.Scan(&accessMode)
-	if err != nil {
-		log.Println("Could not get accessmode")
-	} else {
-		log.Printf("DB opened with access mode %s", accessMode)
-	}
+	// setting := db.QueryRowContext(context.Background(), "SELECT current_setting('access_mode')")
+	// var accessMode string
+	// err = setting.Scan(&accessMode)
+	// if err != nil {
+	// 	log.Println("Could not get accessmode")
+	// } else {
+	// 	log.Printf("DB opened with access mode %s", accessMode)
+	// }
 
 	// initfile, err := os.ReadFile("db/init.sql")
-	if err != nil {
-		panic(err)
-	}
+	// if err != nil {
+	// 	panic(err)
+	// }
 	_, err = db.ExecContext(context.Background(), string(initSql))
 	if err != nil {
 		panic(err)
@@ -95,7 +96,8 @@ func init() {
 }
 
 func setupDbCon() (*sql.DB, error) {
-	db, err := sql.Open("duckdb", "?access_mode=READ_WRITE")
+	// db, err := sql.Open("duckdb", "?access_mode=READ_WRITE")
+	db, err := sql.Open("sqlite3", "./test.db")
 	if err != nil {
 		return db, err
 	}
