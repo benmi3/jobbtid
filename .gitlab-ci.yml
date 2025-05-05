@@ -68,9 +68,9 @@ release:
     DOCKER_USERNAME: $CI_REGISTRY_USER
     DOCKER_PASSWORD: $CI_REGISTRY_PASSWORD
     GIT_DEPTH: 0
-    GITHUB_TOKEN: ""
+    GITHUB_TOKEN: "123"
     #GITLAB_TOKEN:
-    GITEA_TOKEN: ""
+    GITEA_TOKEN: "123"
 
   script: |
     docker run --rm --privileged \
