@@ -22,6 +22,12 @@ test:
     expire_in: 1 week
     when: always
 #  allow_failure: true # temp
+  only:
+    - merge_requests
+    - master
+    - develop
+    - main
+    - dev
 
 sast:
   stage: codescan-1
@@ -69,7 +75,7 @@ release:
     DOCKER_PASSWORD: $CI_REGISTRY_PASSWORD
     GIT_DEPTH: 0
     # GITHUB_TOKEN: "123"
-    GITLAB_TOKEN: $GITLAB_TOKEN
+    GITLAB_TOKEN: $CI_JOB_TOKEN
     # GITEA_TOKEN: "123"
 
   script: |
