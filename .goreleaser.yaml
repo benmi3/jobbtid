@@ -10,9 +10,7 @@ project_name: jobbtid
 
 before:
   hooks:
-    # You could run go mod tidy, generate code, etc. before building
-    # - go mod tidy
-    # - go generate ./...
+    - go mod tidy
 
 builds:
   - # Your main application build configuration
