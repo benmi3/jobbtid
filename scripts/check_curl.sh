@@ -1,3 +1,3 @@
 curl -X GET \
   -H "Authorization: Bearer valid-token" \
-  "http://localhost:8080/start?username=test"
+  "http://localhost:8080/check?username=test"

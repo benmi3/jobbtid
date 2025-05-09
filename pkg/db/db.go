@@ -8,8 +8,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	//_ "github.com/marcboeker/go-duckdb"
@@ -22,7 +24,7 @@ var (
 -- Create the user_sessions table if it doesn't exist (DuckDB & PostgreSQL compatible)
 CREATE TABLE IF NOT EXISTS jobbtid (
     -- Primary Key
-    id BIGINT PRIMARY KEY,
+    id INTEGER PRIMARY KEY,
 
     -- User Information
     uid VARCHAR(255) NOT NULL,
@@ -52,7 +54,7 @@ CREATE INDEX IF NOT EXISTS idx_jobbtid_stoptime ON jobbtid(stoptime);
 )
 
 type Jobbtid struct {
-	Id int `json:"id"`
+	Id int64 `json:"id"`
 
 	Uid string `json:"userId"`
 
@@ -110,7 +112,7 @@ func setupDbCon() (*sql.DB, error) {
 
 func Create(
 	uid string,
-	jobbtid string,
+	jobbdag string,
 	starttime string,
 	stoptime string,
 ) (int64, error) {
@@ -119,9 +121,18 @@ func Create(
 		return -1, err
 	}
 
-	query := `INSERT INTO jobbtid VALUES(?, ?, ?, ?,CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?)`
+	// query := `INSERT INTO jobbtid VALUES(?, ?, ?, ?,CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?, NULL)`
+	query := `
+INSERT INTO jobbtid (
+    uid,
+    jobbdag,
+    starttime,
+    stoptime,
+    create_uid,
+    update_uid
+) VALUES (?, ?, ?, ?, ?, ?)`
 
-	res, err := db.ExecContext(context.Background(), query, uid, jobbtid, starttime, stoptime, uid, uid)
+	res, err := db.ExecContext(context.Background(), query, uid, jobbdag, starttime, stoptime, uid, uid)
 	if err != nil {
 		return -1, err
 	}
@@ -129,11 +140,15 @@ func Create(
 }
 
 func Update(
+	id int64,
 	uid string,
-	jobbtid string,
+	jobbdag string,
 	starttime string,
 	stoptime string,
 ) (int64, error) {
+	if starttime == "" && stoptime == "" {
+		return -1, errors.New("you need either or both of starttime and stoptime")
+	}
 	db, err := setupDbCon()
 	if err != nil {
 		return -1, err
@@ -141,20 +156,37 @@ func Update(
 	defer db.Close()
 
 	query := `
-        UPDATE jobbtid
-        SET
-            starttime = ?,
-            stoptime = ?,
-            update_dt = CURRENT_TIMESTAMP,
-            update_uid = ?
-        WHERE
-            id = ? AND jobbdag = ?`
+UPDATE jobbtid
+SET `
+	params := []any{}
+	setClauses := []string{}
 
-	res, err := db.ExecContext(context.Background(), query, starttime, stoptime, uid, jobbtid)
+	if starttime != "" {
+		setClauses = append(setClauses, "starttime = ?")
+		params = append(params, starttime)
+	}
+
+	if stoptime != "" {
+		setClauses = append(setClauses, "stoptime = ?")
+		params = append(params, stoptime)
+	}
+
+	setClauses = append(setClauses, "update_dt = CURRENT_TIMESTAMP", "update_uid = ?")
+	params = append(params, uid)
+
+	query += strings.Join(setClauses, ", ") + `
+WHERE
+		uid = ?
+	AND jobbdag = ?
+	AND delete_flag IS NULL`
+
+	params = append(params, uid, jobbdag)
+
+	_, err = db.ExecContext(context.Background(), query, params...)
 	if err != nil {
 		return -1, err
 	}
-	return res.LastInsertId()
+	return id, nil
 }
 
 func GetById(
@@ -168,17 +200,30 @@ func GetById(
 
 	row := db.QueryRowContext(
 		context.Background(), `
-		SELECT (*)
-		FROM jobbtid
+SELECT
+		id,
+		uid,
+		jobbdag,
+		starttime,
+		stoptime,
+		create_dt,
+		update_dt,
+		create_uid,
+		update_uid
+FROM jobbtid
 		WHERE 
-			uid = ?`,
+			uid = ?
+			AND delete_flag IS NULL`,
 		uid,
 	)
 
 	j := new(Jobbtid)
 	err = row.Scan(&j.Id, &j.Uid, &j.JobbDag, &j.Starttime, &j.Stoptime, &j.Create_dt, &j.Update_dt, &j.Create_uid, &j.Update_uid)
 	if err != nil {
-		log.Fatal(err)
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
 	}
 	jsonData, err := json.Marshal(j)
 	if err != nil {
@@ -200,19 +245,33 @@ func GetByDate(
 
 	row := db.QueryRowContext(
 		context.Background(), `
-		SELECT (*)
-		FROM jobbtid
-		WHERE 
-			jobbdag = ? 
-			AND uid = ?`,
+SELECT
+		id,
+		uid,
+		jobbdag,
+		starttime,
+		stoptime,
+		create_dt,
+		update_dt,
+		create_uid,
+		update_uid
+FROM jobbtid
+WHERE 
+	jobbdag = ? 
+	AND uid = ?
+	AND delete_flag IS NULL`,
 		jobbdag, userid,
 	)
 
 	j := new(Jobbtid)
 	err = row.Scan(&j.Id, &j.Uid, &j.JobbDag, &j.Starttime, &j.Stoptime, &j.Create_dt, &j.Update_dt, &j.Create_uid, &j.Update_uid)
 	if err != nil {
-		log.Fatal(err)
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
 	}
+
 	jsonData, err := json.Marshal(j)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling jobbtid due to %s¥n", err)
@@ -230,8 +289,19 @@ func List() (*bytes.Buffer, error) {
 
 	rows, err := db.QueryContext(
 		context.Background(), `
-		SELECT (*)
-		FROM jobbtid`,
+SELECT
+		id,
+		uid,
+		jobbdag,
+		starttime,
+		stoptime,
+		create_dt,
+		update_dt,
+		create_uid,
+		update_uid
+FROM jobbtid
+WHERE 
+	AND delete_flag IS NULL`,
 	)
 	if err != nil {
 		return nil, err

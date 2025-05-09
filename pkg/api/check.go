@@ -16,9 +16,13 @@ func check(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	resBody, err := db.GetByDate(userReq.Username, userReq.Date)
-	if err != nil || resBody == nil {
+	if err != nil {
 		// recId is an auto increment BIGING, so if its 0 or less, something is wrong
 		RespondWithCodeMessage(w, http.StatusInternalServerError, http.StatusText(http.StatusInternalServerError))
+		return
+	}
+	if resBody == nil {
+		RespondWithCodeMessage(w, http.StatusNotFound, http.StatusText(http.StatusNotFound))
 		return
 	}
 	RespondWithCodeBody(w, http.StatusOK, resBody)

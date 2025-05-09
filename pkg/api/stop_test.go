@@ -11,7 +11,7 @@ import (
 
 func TestGETStop(t *testing.T) {
 	t.Run("No Query returns Bad Reqest", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodGet, "/start", nil)
+		request, _ := http.NewRequest(http.MethodGet, "/stop", nil)
 		response := httptest.NewRecorder()
 
 		stop(response, request)
@@ -31,7 +31,7 @@ func TestGETStop(t *testing.T) {
 
 func TestPOSTStop(t *testing.T) {
 	t.Run("NoBody return Bad Request", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodPost, "/start", nil)
+		request, _ := http.NewRequest(http.MethodPost, "/stop", nil)
 		response := httptest.NewRecorder()
 
 		stop(response, request)

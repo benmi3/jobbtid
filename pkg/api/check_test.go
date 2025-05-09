@@ -11,7 +11,7 @@ import (
 
 func TestGETCheck(t *testing.T) {
 	t.Run("No Query returns Bad Reqest", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodGet, "/start", nil)
+		request, _ := http.NewRequest(http.MethodGet, "/check", nil)
 		response := httptest.NewRecorder()
 
 		check(response, request)
@@ -31,7 +31,7 @@ func TestGETCheck(t *testing.T) {
 
 func TestPOSTCheck(t *testing.T) {
 	t.Run("NoBody return Bad Request", func(t *testing.T) {
-		request, _ := http.NewRequest(http.MethodPost, "/start", nil)
+		request, _ := http.NewRequest(http.MethodPost, "/check", nil)
 		response := httptest.NewRecorder()
 
 		check(response, request)
