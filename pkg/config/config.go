@@ -50,21 +50,22 @@ func (conf *Config) Host(configName string) (string, error) {
 	return "", errors.New("unsupported config")
 }
 
-func (conf Config) updateServerConf() error {
-	host := viper.GetString("host")
-	if len(host) == 0 {
+func (conf *Config) updateServerConf() error {
+	host := viper.GetString("server.host")
+	if len(host) > 0 {
 		conf.ServerConf.Host = host
 	}
-	port := viper.GetUint("port")
+	port := viper.GetUint("server.port")
 	if port > 0 {
 		conf.ServerConf.Port = port
 	}
+	conf.ServerConf.Default = false
 	return nil
 }
 
 func ReadConfigFile(cfgFilePath string) (Config, error) {
 	MainConfig = createDefaultConfig()
-	viper.AddConfigPath(cfgFilePath)
+	viper.SetConfigFile(cfgFilePath)
 	err := viper.ReadInConfig() // Find and read the config file
 	if err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {

@@ -116,27 +116,57 @@ func Create(
 	starttime string,
 	stoptime string,
 ) (int64, error) {
+	if starttime == "" && stoptime == "" {
+		return -1, errors.New("at least one of starttime or stoptime must be provided")
+	}
+
 	db, err := setupDbCon()
 	if err != nil {
-		return -1, err
+		return -1, fmt.Errorf("database connection setup failed: %w", err)
+	}
+	defer db.Close() // Ensure the database connection is closed
+
+	columns := []string{}
+	params := []any{}
+	setClauses := []string{}
+
+	columns = append(columns, "uid", "jobbdag")
+	setClauses = append(setClauses, "?", "?")
+	params = append(params, uid, jobbdag)
+
+	if starttime != "" {
+		columns = append(columns, "starttime")
+		setClauses = append(setClauses, "?")
+		params = append(params, starttime)
 	}
 
-	// query := `INSERT INTO jobbtid VALUES(?, ?, ?, ?,CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, ?, ?, NULL)`
-	query := `
-INSERT INTO jobbtid (
-    uid,
-    jobbdag,
-    starttime,
-    stoptime,
-    create_uid,
-    update_uid
-) VALUES (?, ?, ?, ?, ?, ?)`
+	if stoptime != "" {
+		columns = append(columns, "stoptime")
+		setClauses = append(setClauses, "?")
+		params = append(params, stoptime)
+	}
 
-	res, err := db.ExecContext(context.Background(), query, uid, jobbdag, starttime, stoptime, uid, uid)
+	columns = append(columns, "create_uid", "update_uid")
+	setClauses = append(setClauses, "?", "?")
+	params = append(params, uid, uid)
+
+	query := fmt.Sprintf(
+		"INSERT INTO jobbtid (%s) VALUES (%s) RETURNING id",
+		strings.Join(columns, ", "),
+		strings.Join(setClauses, ", "),
+	)
+
+	var returnedID int64
+
+	err = db.QueryRowContext(context.Background(), query, params...).Scan(&returnedID)
 	if err != nil {
-		return -1, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return -1, fmt.Errorf("insert operation did not return an ID, possibly insert failed or RETURNING clause issue: %w", err)
+		}
+		return -1, fmt.Errorf("failed to execute insert query or scan returned ID: %w", err)
 	}
-	return res.LastInsertId()
+
+	return returnedID, nil
 }
 
 func Update(
@@ -178,15 +208,21 @@ SET `
 WHERE
 		uid = ?
 	AND jobbdag = ?
-	AND delete_flag IS NULL`
+	AND delete_flag IS NULL
+RETURNING id`
 
 	params = append(params, uid, jobbdag)
 
-	_, err = db.ExecContext(context.Background(), query, params...)
+	var returnedID int64
+
+	err = db.QueryRowContext(context.Background(), query, params...).Scan(&returnedID)
 	if err != nil {
-		return -1, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return -1, fmt.Errorf("insert operation did not return an ID, possibly insert failed or RETURNING clause issue: %w", err)
+		}
+		return -1, fmt.Errorf("failed to execute insert query or scan returned ID: %w", err)
 	}
-	return id, nil
+	return returnedID, nil
 }
 
 func GetById(
